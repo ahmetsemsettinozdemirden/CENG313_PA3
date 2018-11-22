@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+// type definitions
+typedef struct hist_node HistNode;
+
 // constants
 const int BUILTIN_COMMANDS_SIZE = 5;
 const char* BUILTIN_COMMANDS[BUILTIN_COMMANDS_SIZE] = { "cd", "dir", "history", "findloc", "bye" };
@@ -10,6 +13,8 @@ const char* BUILTIN_COMMANDS[BUILTIN_COMMANDS_SIZE] = { "cd", "dir", "history", 
 // global variables
 char input[100];
 char* tokenizedInput[10];
+int histCounter = 1;
+HistNode* histList;
 
 // functions
 char** parseInput(char input[100]);
@@ -20,16 +25,26 @@ void dir();
 void history();
 void findloc();
 void bye();
+void addHistoryNode(char* command);
+
+struct hist_node {
+    int index;
+    char* command;
+    struct hist_node* next;
+};
 
 int main() {
 
     while(1) {
         setbuf(stdout, 0);
-        printf("bestshellever>");
+        printf("\nbestshellever>");
 
         // get line
         fgets(input, 100, stdin);
         input[strcspn(input, "\n")] = 0;
+
+        // add command to history
+        addHistoryNode(input);
 
         // tokenize
         char copyInput[100];
@@ -55,7 +70,7 @@ int main() {
 //            }
         }
 
-        exit(0);
+//        exit(0);
     }
 
 }
@@ -120,9 +135,12 @@ void dir() {
 }
 
 void history() {
-    // TODO: history
-    setbuf(stdout, 0);
-    printf("'history' command executed.");
+    HistNode *node = histList;
+    while (node != NULL) {
+        setbuf(stdout, 0);
+        printf("[%d] %s\n", node->index, node->command);
+        node = node->next;
+    }
 }
 
 void findloc() {
@@ -135,4 +153,26 @@ void bye() {
     setbuf(stdout, 0);
     printf("bye");
     exit(0);
+}
+
+HistNode* createHistNode(char* command) {
+    HistNode* newNode = malloc(sizeof(HistNode));
+    newNode->index = histCounter++;
+    newNode->command = malloc(strlen(command) + 1);
+    strcpy(newNode->command, command);
+    newNode->next = NULL;
+    return newNode;
+}
+
+// Insert a new task into task queue
+void addHistoryNode(char* command) {
+    if(histList == NULL) {
+        histList = createHistNode(command);
+    } else {
+        HistNode* prevNode = histList;
+        while (prevNode->next != NULL) {
+            prevNode = prevNode->next;
+        }
+        prevNode->next = createHistNode(command);
+    }
 }

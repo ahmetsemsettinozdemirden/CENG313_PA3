@@ -4,7 +4,6 @@
 #include <unistd.h>
 
 // constants
-const char* SHELL_NAME = "bestshellever";
 const int BUILTIN_COMMANDS_SIZE = 5;
 const char* BUILTIN_COMMANDS[BUILTIN_COMMANDS_SIZE] = { "cd", "dir", "history", "findloc", "bye" };
 
@@ -21,17 +20,28 @@ void bye();
 int main() {
 
     while(1) {
-        printf(strcat(SHELL_NAME, ">"));
+        setbuf(stdout, 0);
+        printf("bestshellever>");
 
+        // get line
         char input[100];
-        scanf("%s", input); // TODO: check 100 chars limit
+        fgets(input, 100, stdin); // TODO: check 100 chars limit
+        input[strcspn(input, "\n")] = 0;
 
-        char** parsedInput;
-        parsedInput = parseInput(input); // TODO: check 10 words limit
+        // tokenize
+        char* tokenizedInput[10];
+        int i = 0;
+        char* token = strtok(input, " ");
+        while(token != NULL && i < 10) {
+            tokenizedInput[i] = token;
+            token = strtok(NULL, " ");
+            i++;
+        }
 
+        // false is represented by 0
         // TODO: builtin as a background task
-        if(isBuiltIn(parsedInput) == 0) { // TODO: how to do pipe `|` operation
-            execute(parsedInput);
+        if(isBuiltIn(tokenizedInput) != 0) { // TODO: how to do pipe `|` operation
+            execute(tokenizedInput);
         } else {
 //            fork();
 //            if(child) {
@@ -41,16 +51,8 @@ int main() {
 //            }
         }
 
+        exit(0);
     }
-
-}
-
-char** parseInput(char input[100]) {
-
-    int charCounter = 0;
-    int wordCounter = 0;
-
-    // TODO: parse input into parsedInput
 
 }
 
@@ -66,15 +68,15 @@ int isBuiltIn(char* parsedInput[]) {
 void execute(char* parsedInput[]) {
     // TODO: pipe `|` operation
     char* command = parsedInput[0];
-    if (strcmp(command, "cd")) {
+    if (strcmp(command, "cd") == 0) {
         cd();
-    } else if (strcmp(command, "dir")){
+    } else if (strcmp(command, "dir") == 0){
         dir();
-    } else if (strcmp(command, "history")){
+    } else if (strcmp(command, "history") == 0){
         history();
-    } else if (strcmp(command, "findloc")){
+    } else if (strcmp(command, "findloc") == 0){
         findloc();
-    } else if (strcmp(command, "bye")){
+    } else if (strcmp(command, "bye") == 0){
         bye();
     } else {
         perror("command is not builtin.");
@@ -83,29 +85,35 @@ void execute(char* parsedInput[]) {
 
 void cd() {
     // TODO: cd
+    setbuf(stdout, 0);
     printf("'cd' command executed.");
 }
 
 void dir() {
     char cwd[100];
     if(getcwd(cwd, sizeof(cwd))) {
+        setbuf(stdout, 0);
         printf(cwd);
     } else {
+        setbuf(stdout, 0);
         perror("'dir' command couldn't executed.");
     }
 }
 
 void history() {
     // TODO: history
+    setbuf(stdout, 0);
     printf("'history' command executed.");
 }
 
 void findloc() {
     // TODO: findloc
+    setbuf(stdout, 0);
     printf("'findloc' command executed.");
 }
 
 void bye() {
+    setbuf(stdout, 0);
     printf("bye");
     exit(0);
 }

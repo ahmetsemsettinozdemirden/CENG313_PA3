@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 // type definitions
 #define a 5
@@ -10,13 +12,14 @@ typedef struct hist_node HistNode;
 
 // constants
 const int BUILTIN_COMMANDS_SIZE = 5;
-const char* BUILTIN_COMMANDS[a] = { "cd", "dir", "history", "findloc", "bye" };
+const char* BUILTIN_COMMANDS[a] = { "cd", "dir", "history", "findloc", "bye" }; //TODO: check a
 
 // global variables
 char input[100];
 char* tokenizedInput[10];
 int histCounter = 1;
 HistNode* histList;
+
 
 // functions
 char** parseInput(char input[100]);
@@ -28,6 +31,7 @@ void history();
 void findloc();
 void bye();
 void addHistoryNode(char* command);
+void checkIfExistAndExecutable(char* directory, char* command);
 
 struct hist_node {
     int index;
@@ -48,7 +52,7 @@ int main() {
                 continue;
         }
 
-        printf("%s",input);
+        //printf("%s",input);
         input[strcspn(input, "\n")] = 0;
 
         // add command to history
@@ -152,10 +156,59 @@ void history() {
 }
 
 void findloc() {
-    // TODO: findloc
-    setbuf(stdout, 0);
-    printf("'findloc' command executed.");
+        char* path = getenv("PATH");
+        char* command = tokenizedInput[1];
+        if(command == NULL){
+                printf("You should enter some command");
+                return;
+        }
+        //printf("Path %s", path);
+
+        char* copyPath[100];
+        strcpy(copyPath, path);
+        char* token = strtok(copyPath, ":"); //Can't call findloc twice properly if we don't do this.
+
+        //Check current directory
+        char cwd[100];
+        char* directory = getcwd(cwd, sizeof(cwd));
+        checkIfExistAndExecutable(directory,command);
+
+        //check PATH
+        while(token != NULL ) {
+
+                directory = token;
+                checkIfExistAndExecutable(directory,command);
+                token = strtok(NULL, ":");
+        }
+        setbuf(stdout, 0);
+        printf("\n'findloc' command executed.");
 }
+
+void checkIfExistAndExecutable(char* directory, char* command){
+        DIR *dir;
+        struct dirent *ent= NULL;
+        struct stat sb;
+        if((dir = opendir(directory))!= NULL) {
+                while((ent = readdir (dir)) != NULL) {
+                        if(strcmp(ent->d_name,command) == 0 ){
+                                strcat(directory,"/");
+                                strcat(directory,ent->d_name);
+
+                                if(stat(directory, &sb) == 0 && sb.st_mode & S_IXUSR)
+                                        printf("%s\n", directory );
+                                else{
+                                        printf("Found but not executable");
+                                }
+                        }
+                        else{
+                                //printf("cant open %s\n", dir);
+                        }
+
+                }
+                closedir(dir);
+        }
+}
+
 
 void bye() {
     setbuf(stdout, 0);

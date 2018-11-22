@@ -1,0 +1,3 @@
+/home/berkay/Desktop/CENG313_PA3/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/berkay/Desktop/CENG313_PA3/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/berkay/Desktop/CENG313_PA3/cmake-build-debug/CMakeFiles/OS_ASSIGNMENT3.dir

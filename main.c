@@ -4,11 +4,13 @@
 #include <unistd.h>
 
 // type definitions
+#define a 5
+
 typedef struct hist_node HistNode;
 
 // constants
 const int BUILTIN_COMMANDS_SIZE = 5;
-const char* BUILTIN_COMMANDS[BUILTIN_COMMANDS_SIZE] = { "cd", "dir", "history", "findloc", "bye" };
+const char* BUILTIN_COMMANDS[a] = { "cd", "dir", "history", "findloc", "bye" };
 
 // global variables
 char input[100];
@@ -41,6 +43,12 @@ int main() {
 
         // get line
         fgets(input, 100, stdin);
+
+        if(*input == '\n'){ //Check if user entered newline
+                continue;
+        }
+
+        printf("%s",input);
         input[strcspn(input, "\n")] = 0;
 
         // add command to history

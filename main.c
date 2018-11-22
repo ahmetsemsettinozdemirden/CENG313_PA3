@@ -7,6 +7,10 @@
 const int BUILTIN_COMMANDS_SIZE = 5;
 const char* BUILTIN_COMMANDS[BUILTIN_COMMANDS_SIZE] = { "cd", "dir", "history", "findloc", "bye" };
 
+// global variables
+char input[100];
+char* tokenizedInput[10];
+
 // functions
 char** parseInput(char input[100]);
 int isBuiltIn(char* parsedInput[]);
@@ -24,12 +28,12 @@ int main() {
         printf("bestshellever>");
 
         // get line
-        char input[100];
-        fgets(input, 100, stdin); // TODO: check 100 chars limit
+        fgets(input, 100, stdin);
         input[strcspn(input, "\n")] = 0;
 
         // tokenize
-        char* tokenizedInput[10];
+        char copyInput[100];
+        strcpy(copyInput, input);
         int i = 0;
         char* token = strtok(input, " ");
         while(token != NULL && i < 10) {
@@ -84,9 +88,24 @@ void execute(char* parsedInput[]) {
 }
 
 void cd() {
-    // TODO: cd
-    setbuf(stdout, 0);
-    printf("'cd' command executed.");
+
+    // usage: cd <directory>
+    char* directory = tokenizedInput[1];
+
+    // get home directory if <directory> does not exist
+    if(directory == NULL || strcmp(directory, "") == 0) {
+        directory = getenv("HOME");
+    }
+
+    // change directory
+    chdir(directory);
+
+    // get current absolute path
+    char cwd[100];
+    getcwd(cwd, sizeof(cwd));
+
+    // update PWD
+    setenv("PWD", cwd, 1);
 }
 
 void dir() {

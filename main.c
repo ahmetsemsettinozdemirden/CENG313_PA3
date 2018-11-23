@@ -12,6 +12,7 @@ const char* BUILTIN_COMMANDS[BUILTIN_COMMANDS_SIZE] = { "cd", "dir", "history", 
 
 // global variables
 char input[100];
+int tokenizerCounter;
 char* tokenizedInput[10];
 int histCounter = 1;
 HistNode* histList;
@@ -43,18 +44,24 @@ int main() {
         fgets(input, 100, stdin);
         input[strcspn(input, "\n")] = 0;
 
+        if(*input == '\0' || *input == '\n')
+            continue;
+
         // add command to history
         addHistoryNode(input);
 
         // tokenize
+        for (int i = 0; i < 10; ++i) {
+            tokenizedInput[i] = NULL;
+        }
         char copyInput[100];
         strcpy(copyInput, input);
-        int i = 0;
+        tokenizerCounter = 0;
         char* token = strtok(input, " ");
-        while(token != NULL && i < 10) {
-            tokenizedInput[i] = token;
+        while(token != NULL && tokenizerCounter < 10) {
+            tokenizedInput[tokenizerCounter] = token;
             token = strtok(NULL, " ");
-            i++;
+            tokenizerCounter++;
         }
 
         // false is represented by 0
@@ -62,15 +69,22 @@ int main() {
         if(isBuiltIn(tokenizedInput) != 0) { // TODO: how to do pipe `|` operation
             execute(tokenizedInput);
         } else {
-//            fork();
-//            if(child) {
-//
-//            } else if (not a background process) {
-//                wait for the child
-//            }
-        }
+            pid_t pid = fork();
 
-//        exit(0);
+            if(pid == 0) {
+
+                // background process
+                if(*tokenizedInput[tokenizerCounter - 1] == '&') {
+                    tokenizedInput[tokenizerCounter - 1] = NULL;
+                }
+
+                execvp(tokenizedInput[0], tokenizedInput);
+            } else if(*tokenizedInput[tokenizerCounter - 1] != '&'){
+                wait(NULL);
+            } else {
+                printf("pid: %d", pid);
+            }
+        }
     }
 
 }
@@ -136,6 +150,13 @@ void dir() {
 
 void history() {
     HistNode *node = histList;
+
+    int shiftItems = histCounter - 11;
+    while(shiftItems > 0 && node != NULL) {
+        node = node->next;
+        shiftItems--;
+    }
+
     while (node != NULL) {
         setbuf(stdout, 0);
         printf("[%d] %s\n", node->index, node->command);

@@ -2,6 +2,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
 
 // type definitions
 typedef struct hist_node HistNode;
@@ -27,6 +30,7 @@ void history();
 void findloc();
 void bye();
 void addHistoryNode(char* command);
+void checkIfExistAndExecutable(char* directory, char* command);
 
 struct hist_node {
     int index;
@@ -37,6 +41,7 @@ struct hist_node {
 int main() {
 
     while(1) {
+        // IDE fix
         setbuf(stdout, 0);
         printf("\nbestshellever>");
 
@@ -44,19 +49,22 @@ int main() {
         fgets(input, 100, stdin);
         input[strcspn(input, "\n")] = 0;
 
+        // immediate enter fix
         if(*input == '\0' || *input == '\n')
             continue;
 
         // add command to history
         addHistoryNode(input);
 
-        // tokenize
+        // tokenize input
         for (int i = 0; i < 10; ++i) {
             tokenizedInput[i] = NULL;
         }
+        // since tokenizer consume data in input array we need to copy save it in another array
         char copyInput[100];
         strcpy(copyInput, input);
         tokenizerCounter = 0;
+        // string tokenization with " " empty space
         char* token = strtok(input, " ");
         while(token != NULL && tokenizerCounter < 10) {
             tokenizedInput[tokenizerCounter] = token;
@@ -65,23 +73,27 @@ int main() {
         }
 
         // false is represented by 0
-        // TODO: builtin as a background task
         if(isBuiltIn(tokenizedInput) != 0) { // TODO: how to do pipe `|` operation
             execute(tokenizedInput);
         } else {
+            // create new process
             pid_t pid = fork();
 
+            // if child
             if(pid == 0) {
 
-                // background process
+                // remove background process argument
                 if(*tokenizedInput[tokenizerCounter - 1] == '&') {
                     tokenizedInput[tokenizerCounter - 1] = NULL;
                 }
 
+                // run
                 execvp(tokenizedInput[0], tokenizedInput);
             } else if(*tokenizedInput[tokenizerCounter - 1] != '&'){
+                // wait for the completion of child execution
                 wait(NULL);
             } else {
+                // print background process id
                 printf("pid: %d", pid);
             }
         }
@@ -89,8 +101,8 @@ int main() {
 
 }
 
+// look for the built-in commands
 int isBuiltIn(char* parsedInput[]) {
-    // TODO: pipe `|` operation
     char* command = parsedInput[0];
     for (int i = 0; i < BUILTIN_COMMANDS_SIZE; ++i)
         if (strcmp(command, BUILTIN_COMMANDS[i]) == 0)
@@ -98,8 +110,8 @@ int isBuiltIn(char* parsedInput[]) {
     return 0;
 }
 
+// execute built-in command
 void execute(char* parsedInput[]) {
-    // TODO: pipe `|` operation
     char* command = parsedInput[0];
     if (strcmp(command, "cd") == 0) {
         cd();
@@ -116,6 +128,7 @@ void execute(char* parsedInput[]) {
     }
 }
 
+// change directory
 void cd() {
 
     // usage: cd <directory>
@@ -137,6 +150,7 @@ void cd() {
     setenv("PWD", cwd, 1);
 }
 
+// print current directory
 void dir() {
     char cwd[100];
     if(getcwd(cwd, sizeof(cwd))) {
@@ -148,15 +162,18 @@ void dir() {
     }
 }
 
+// print last 10 executed commands
 void history() {
     HistNode *node = histList;
 
-    int shiftItems = histCounter - 11;
-    while(shiftItems > 0 && node != NULL) {
+    // skip until last 10 command
+    int skipItems = histCounter - 11;
+    while(skipItems > 0 && node != NULL) {
         node = node->next;
-        shiftItems--;
+        skipItems--;
     }
 
+    // print items
     while (node != NULL) {
         setbuf(stdout, 0);
         printf("[%d] %s\n", node->index, node->command);
@@ -164,12 +181,60 @@ void history() {
     }
 }
 
+// find location of the executable
 void findloc() {
-    // TODO: findloc
-    setbuf(stdout, 0);
-    printf("'findloc' command executed.");
+    char* path = getenv("PATH");
+    char* command = tokenizedInput[1];
+    if(command == NULL){
+        printf("You should enter some command");
+        return;
+    }
+    //printf("Path %s", path);
+
+    char* copyPath[100];
+    strcpy(copyPath, path);
+    char* token = strtok(copyPath, ":"); //Can't call findloc twice properly if we don't do this.
+
+    //Check current directory
+    char cwd[100];
+    char* directory = getcwd(cwd, sizeof(cwd));
+    checkIfExistAndExecutable(directory,command);
+
+    //check PATH
+    while(token != NULL ) {
+
+        directory = token;
+        checkIfExistAndExecutable(directory,command);
+        token = strtok(NULL, ":");
+    }
 }
 
+void checkIfExistAndExecutable(char* directory, char* command){
+    DIR *dir;
+    struct dirent *ent= NULL;
+    struct stat sb;
+    if((dir = opendir(directory))!= NULL) {
+        while((ent = readdir (dir)) != NULL) {
+            if(strcmp(ent->d_name,command) == 0 ){
+                strcat(directory,"/");
+                strcat(directory,ent->d_name);
+
+                if(stat(directory, &sb) == 0 && sb.st_mode & S_IXUSR)
+                    printf("%s\n", directory );
+                else{
+                    printf("Found but not executable");
+                }
+            }
+            else{
+                //printf("cant open %s\n", dir);
+            }
+
+        }
+        closedir(dir);
+    }
+}
+
+// exit from command line
 void bye() {
     setbuf(stdout, 0);
     printf("bye");
@@ -179,8 +244,8 @@ void bye() {
 HistNode* createHistNode(char* command) {
     HistNode* newNode = malloc(sizeof(HistNode));
     newNode->index = histCounter++;
-    newNode->command = malloc(strlen(command) + 1);
-    strcpy(newNode->command, command);
+    newNode->command = malloc(strlen(command) + 1); // create new memory space for command string
+    strcpy(newNode->command, command); // copy the command string to the node
     newNode->next = NULL;
     return newNode;
 }
@@ -188,12 +253,12 @@ HistNode* createHistNode(char* command) {
 // Insert a new task into task queue
 void addHistoryNode(char* command) {
     if(histList == NULL) {
-        histList = createHistNode(command);
+        histList = createHistNode(command); // create list if the list is null
     } else {
         HistNode* prevNode = histList;
         while (prevNode->next != NULL) {
-            prevNode = prevNode->next;
+            prevNode = prevNode->next; // skip to the last item
         }
-        prevNode->next = createHistNode(command);
+        prevNode->next = createHistNode(command); // connect newly created node to list
     }
 }
